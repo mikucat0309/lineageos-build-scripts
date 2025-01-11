@@ -1,0 +1,28 @@
+services:
+  sync:
+    image: lineageos4microg/docker-lineage-cicd:latest
+    env_file: env.conf
+    entrypoint: bash
+    command:
+      - /sync.sh
+    volumes:
+      - ./sync-entrypoint.sh:/sync.sh
+      - /mnt/lineage/src:/srv/src
+      - ./manifests:/srv/local_manifests
+    restart: no
+
+  build:
+    image: lineageos4microg/docker-lineage-cicd:latest
+    env_file: env.conf
+    volumes:
+      - /mnt/lineage/src:/srv/src
+      - /mnt/lineage/ccache:/srv/ccache
+      - ./manifests:/srv/local_manifests
+      - ./zips:/srv/zips
+      - ./logs:/srv/logs
+      - ./keys:/srv/keys
+    depends_on:
+      sync:
+        condition: service_completed_successfully
+        restart: true
+    restart: no

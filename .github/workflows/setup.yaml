@@ -1,0 +1,53 @@
+name: Setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      instance_name:
+        description: GCP instance name
+        type: string
+        default: lineageos-builder
+      zone:
+        description: GCP zone
+        type: string
+        default: asia-south1-c
+      instance_type:
+        description: GCP instance type
+        type: choice
+        options:
+          - c2d-standard-16
+
+permissions:
+  id-token: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          workload_identity_provider: ${{ vars.GOOGLE_CLOUD_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Create builder instance
+        run: >
+          gcloud compute instances create ${{ inputs.instance_name }}
+          --project=${{ vars.GOOGLE_CLOUD_PROJECT }}
+          --zone=${{ inputs.zone }}
+          --machine-type=${{ inputs.instance_type }}
+          --network-interface=network-tier=PREMIUM,stack-type=IPV4_ONLY,subnet=default
+          --metadata-from-file=startup-script=startup.sh
+          --no-restart-on-failure
+          --maintenance-policy=TERMINATE
+          --provisioning-model=SPOT
+          --instance-termination-action=STOP
+          --discard-local-ssds-at-termination-timestamp=true
+          --min-cpu-platform="AMD Milan"
+          --create-disk=auto-delete=yes,boot=yes,device-name=${{ inputs.instance_name }},image=projects/debian-cloud/global/images/debian-12-bookworm-v20241210,mode=rw,size=10,type=pd-standard
+          --local-ssd=interface=NVME
+          --no-shielded-secure-boot
+          --reservation-affinity=any
